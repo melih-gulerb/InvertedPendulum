@@ -1,0 +1,237 @@
+
+clear all 
+ close all 
+ clc
+ 
+ M=0.9575;
+ m=0.2425;
+ L=0.1649;
+ g=9.804;
+
+ %initial conditions
+ location=4;
+ velocity=0;
+ angle=2*pi/3;
+ angularv=0;
+ %%%%%%%%%%%%%%%%
+ 
+ %nonlinear controller parameters
+ kx=0.01;
+ kv=1;
+ kdelta=1;
+ ke=1;
+ %%%%%%
+ 
+ %%%%disturbance
+ t1=100;
+ t2=80;
+ dis=10; %dis=0 for no disturbance signal
+
+ dist=@(d) dis.*((t2<=d) & (d<=t1));
+ 
+ %%%%
+ 
+ %initial values
+ contr = 0;
+ kine = 1/2*(M+m)*velocity^2 + 1/2*m*L^2*angularv^2+...
+      m*L*velocity*angularv*cos(angle);
+ pote = m*g*L*(cos(angle)-1);
+ lyapunov = ke/2*(kine+pote)^2+kv/2*velocity^2+kx/2*location^2;
+
+%%%%%
+
+tspan=0:0.01:200;
+x0=[location velocity angle angularv contr kine pote lyapunov];
+
+
+ %%%%% linear model
+%  A=[0 1 0 0; 0 0 -m*g/M 0; 0 0 0 1; 0 0 (M+m)*g/(L*M) 0];
+%  B=[0; 1/M; 0; -1/(L*M)];
+ 
+%  Q = [1 0 0 0; 0 1 0 0; 0 0 100 0;0 0 0 10000];
+%  R = 0.001;
+
+k=[44 23 74 11];
+    
+[t, x]=ode45(@(t,x)cart_pole(t,x,m,M,L,g,kx,kv,kdelta,ke,k,t1,t2,dis), tspan, x0);
+
+
+ %%%%%%
+ contr = zeros(size(x(:,5)));
+ contr(2:end) = diff(x(:,5))./diff(t);
+ 
+ kine = zeros(size(x(:,5)));
+ kine(2:end) = diff(x(:,6))./diff(t);
+ 
+ pote = zeros(size(x(:,5)));
+ pote(2:end) = diff(x(:,7))./diff(t);
+ 
+ lyapunov = zeros(size(x(:,5)));
+ lyapunov(2:end) = diff(x(:,8))./diff(t);
+ %%%%%%%%
+ 
+ 
+figure(1)
+subplot(2,2,1)
+plot(t,x(:,1))
+title('x')
+xlabel('Time [s]')
+ylabel('Displacement')
+grid
+
+subplot(2,2,2)
+plot(t,x(:,2))
+title('v')
+xlabel('Time [s]')
+ylabel('Velocity')
+grid
+
+subplot(2,2,3)
+plot(t,x(:,3))
+title('\theta')
+xlabel('Time [s]')
+ylabel('Angle [rad]')
+grid
+
+subplot(2,2,4)
+plot(t,x(:,4))
+title('\omega')
+xlabel('Time [s]')
+ylabel('Omega [rad/s]')
+grid
+
+figure(2)
+plot(t,contr)
+title('Control Signal(Force Applied)')
+xlabel('Time [s]')
+ylabel('Amplitude')
+grid
+
+figure(3)
+subplot(2,1,1)
+plot(t,kine)
+title('Kinetic Energy')
+xlabel('Time [s]')
+ylabel('Energy')
+grid
+
+subplot(2,1,2)
+plot(t,pote)
+title('Potantial Energy')
+xlabel('Time [s]')
+ylabel('Energy')
+grid
+
+figure(4)
+subplot(2,1,2)
+plot(t,(kine+pote))
+title('Total Energy (ke+pe)')
+xlabel('Time [s]')
+ylabel('Energy')
+grid
+
+subplot(2,1,1)
+plot(t,(kine-pote))
+title('Lagrange (ke-pe)')
+xlabel('Time [s]')
+ylabel('Lagrange')
+grid
+
+figure(5)
+plot(t, lyapunov)
+title('Lyapunov Function : V')
+xlabel('Time [s]')
+ylabel('V')
+grid
+
+figure(6)
+plot(x(:,3),x(:,4))
+title('Phase Plot')
+xlabel('Angle [rad]')
+ylabel('Angular Velocity [rad/s]')
+grid
+
+d = 0:200;
+figure(7)
+plot(d, dist(d),'LineWidth',2)
+title('Disturbance Signal')
+xlabel('Time [s]')
+ylabel('Amplitude')
+ylim([0 dis+10])
+grid
+
+for k=1:15:length(t)
+figure(8)
+    drawpend(x(k,:),m,M,L);
+end
+
+function xState = cart_pole(t,x,m,M,L,g,kx,kv,kdelta,ke,k,t1,t2,dis)
+
+ 
+    Kin =1/2*(M+m)*x(2)^2 + 1/2*m*L^2*x(4)^2 + m*L*x(2)*x(4)*cos(x(3));
+    Pot = m*g*L*(cos(x(3))-1);
+
+    E=Kin+Pot;
+    
+        
+    if((x(3)<0.3 || x(3)>(2*pi-0.3)) )
+        f=k*[x(1); x(2); x(3); x(4)];
+          if(t<t1 && t>t2)
+              f=f+dis;
+          end
+    else
+        f=(kv*m*sin(x(3))*(g*cos(x(3))-L*x(4)^2) - ...
+            (M+m*sin(x(3))^2)*(kx*x(1)+kdelta*x(2)))/...
+                 (kv+(M+m*sin(x(3))^2)*ke*E);
+       
+    end
+    xState = zeros(8,1);
+
+    xState(1) = x(2);
+    xState(2) = (1/(M+m*sin(x(3))^2)) *...
+        (m*sin(x(3))*(L*x(4)^2-g*cos(x(3)))+f);
+    xState(3) = x(4);
+    xState(4) = (1/(L*(M+m*sin(x(3))^2))) *...
+        (-m*L*x(4)^2*sin(x(3))*cos(x(3))+(M+m)*g*sin(x(3))-f*cos(x(3)));
+    
+    xState(5) = f;
+    xState(6) = Kin;
+    xState(7) = Pot;
+    xState(8)  = ke/2*E^2+kv/2*x(2)^2+kx/2*x(1)^2;
+end
+
+
+function drawpend(state,m,M,L)
+x = state(1);
+theta = state(3);
+
+% Dimensions
+W = 1*sqrt(10*M/5);  % cart width
+H = 0.5*sqrt(10*M/5); % cart height
+wr = 0.2;          % wheel radius
+mr = 0.3*sqrt(10*m);  % mass(ball) radius
+
+% Positions
+y = wr/2+H/2; % Cart's position on vertical
+pendx = x + 8*L*sin(theta); % Pendulum's position at x-axis
+pendy = y + 8*L*cos(theta); % Pendulum's position at y-axis
+
+plot([-10 10],[0 0],'k','LineWidth',2), hold on
+rectangle('Position',[x-W/2,y-H/2,W,H],'Curvature',0.1,'FaceColor',[0.5 0.5 1],'LineWidth',1.5); % Draw cart
+rectangle('Position',[x-0.8*W/2,0,wr,wr],'Curvature',1,'FaceColor',[0 0 0],'LineWidth',1.5); % Draw wheel
+rectangle('Position',[x+0.8*W/2-wr,0,wr,wr],'Curvature',1,'FaceColor',[0 0 0],'LineWidth',1.5); % Draw wheel
+plot([x pendx],[y pendy],'k','LineWidth',2); % Draw pendulum
+rectangle('Position',[pendx-mr/2,pendy-mr/2,mr,mr],'Curvature',1,'FaceColor',[1 0.1 .1],'LineWidth',1.5);%Draw ball
+
+axis([-5 5 -2 2.5]); axis equal
+set(gcf,'Position',[100 100 1000 400])
+pos=text(2.5, 2.2, ['Position: ', num2str(x)]);
+ang=text(2.5, 2, ['Angle: ', num2str(theta)]);
+
+set(pos, 'string',['Position: ', num2str(x)])
+set(ang, 'string',['Angle[Degree]: ', num2str(theta*180/pi)])
+
+drawnow, hold off
+
+
+end
