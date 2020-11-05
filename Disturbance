@@ -1,0 +1,9 @@
+
+ %%%%disturbance
+ t1=100;
+ t2=80;
+ dis=10; %dis=0 for no disturbance signal
+
+ dist=@(d) dis.*((t2<=d) & (d<=t1));
+ 
+ %%%%
