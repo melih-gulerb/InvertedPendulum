@@ -1,0 +1,34 @@
+function drawpend(state,m,M,L)
+x = state(1);
+theta = state(3);
+
+% Dimensions
+W = 1*sqrt(10*M/5);  % cart width
+H = 0.5*sqrt(10*M/5); % cart height
+wr = 0.2;          % wheel radius
+mr = 0.3*sqrt(10*m);  % mass(ball) radius
+
+% Positions
+y = wr/2+H/2; % Cart's position on vertical
+pendx = x + 8*L*sin(theta); % Pendulum's position at x-axis
+pendy = y + 8*L*cos(theta); % Pendulum's position at y-axis
+
+plot([-10 10],[0 0],'k','LineWidth',2), hold on
+rectangle('Position',[x-W/2,y-H/2,W,H],'Curvature',0.1,'FaceColor',[0.5 0.5 1],'LineWidth',1.5); % Draw cart
+rectangle('Position',[x-0.8*W/2,0,wr,wr],'Curvature',1,'FaceColor',[0 0 0],'LineWidth',1.5); % Draw wheel
+rectangle('Position',[x+0.8*W/2-wr,0,wr,wr],'Curvature',1,'FaceColor',[0 0 0],'LineWidth',1.5); % Draw wheel
+plot([x pendx],[y pendy],'k','LineWidth',2); % Draw pendulum
+rectangle('Position',[pendx-mr/2,pendy-mr/2,mr,mr],'Curvature',1,'FaceColor',[1 0.1 .1],'LineWidth',1.5);%Draw ball
+
+axis([-5 5 -2 2.5]); axis equal
+set(gcf,'Position',[100 100 1000 400])
+pos=text(2.5, 2.2, ['Position: ', num2str(x)]);
+ang=text(2.5, 2, ['Angle: ', num2str(theta)]);
+
+set(pos, 'string',['Position: ', num2str(x)])
+set(ang, 'string',['Angle[Degree]: ', num2str(theta*180/pi)])
+
+drawnow, hold off
+
+
+end
