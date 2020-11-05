@@ -1,0 +1,34 @@
+function xState = cart_pole(t,x,m,M,L,g,kx,kv,kdelta,ke,k,t1,t2,dis)
+
+ 
+    Kin =1/2*(M+m)*x(2)^2 + 1/2*m*L^2*x(4)^2 + m*L*x(2)*x(4)*cos(x(3));
+    Pot = m*g*L*(cos(x(3))-1);
+
+    E=Kin+Pot;
+    
+        
+    if((x(3)<0.3 || x(3)>(2*pi-0.3)) )
+        f=k*[x(1); x(2); x(3); x(4)];
+          if(t<t1 && t>t2)
+              f=f+dis;
+          end
+    else
+        f=(kv*m*sin(x(3))*(g*cos(x(3))-L*x(4)^2) - ...
+            (M+m*sin(x(3))^2)*(kx*x(1)+kdelta*x(2)))/...
+                 (kv+(M+m*sin(x(3))^2)*ke*E);
+       
+    end
+    xState = zeros(8,1);
+
+    xState(1) = x(2);
+    xState(2) = (1/(M+m*sin(x(3))^2)) *...
+        (m*sin(x(3))*(L*x(4)^2-g*cos(x(3)))+f);
+    xState(3) = x(4);
+    xState(4) = (1/(L*(M+m*sin(x(3))^2))) *...
+        (-m*L*x(4)^2*sin(x(3))*cos(x(3))+(M+m)*g*sin(x(3))-f*cos(x(3)));
+    
+    xState(5) = f;
+    xState(6) = Kin;
+    xState(7) = Pot;
+    xState(8)  = ke/2*E^2+kv/2*x(2)^2+kx/2*x(1)^2;
+end
